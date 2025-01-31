@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ledger Web App</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    form { margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+  </style>
+</head>
+<body>
+  <h1>Ledger Web Application</h1>
+  <form id="ledgerForm">
+    <label for="name">Name:</label>
+    <input type="text" id="name" required><br><br>
+    <label for="type">Type:</label>
+    <select id="type" required>
+      <option value="Customer">Customer</option>
+      <option value="Vendor">Vendor</option>
+    </select><br><br>
+    <label for="invoiceNumber">Invoice Number:</label>
+    <input type="text" id="invoiceNumber" required><br><br>
+    <label for="description">Description:</label>
+    <input type="text" id="description" required><br><br>
+    <label for="amount">Amount:</label>
+    <input type="number" id="amount" required><br><br>
+    <label for="transactionType">Transaction Type:</label>
+    <select id="transactionType" required>
+      <option value="Debit">Debit</option>
+      <option value="Credit">Credit</option>
+    </select><br><br>
+    <label for="balance">Balance:</label>
+    <input type="number" id="balance" required><br><br>
+    <button type="submit">Save</button>
+  </form>
+
+  <h2>Search Ledger</h2>
+  <input type="text" id="searchInput" placeholder="Enter customer/vendor name">
+  <button onclick="searchLedger()">Search</button>
+
+  <h2>Ledger Data</h2>
+  <button onclick="printLedgerPDF()">Print Ledger as PDF</button>
+  <table id="ledgerTable">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Invoice Number</th>
+        <th>Description</th>
+        <th>Amount</th>
+        <th>Transaction Type</th>
+        <th>Balance</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Data will be populated here -->
+    </tbody>
+  </table>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyN9mB1RWTDy7TFBaI-mU8ysNS2FwwMQiqk6ZDs02sbU1twLD8Zlka07T-wg5WFxRnD/exec';
+
+    // Save data to Google Sheet
+    document.getElementById('ledgerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const data = {
+        name: document.getElementById('name').value,
+        type: document.getElementById('type').value,
+        invoiceNumber: document.getElementById('invoiceNumber').value,
+        description: document.getElementById('description').value,
+        amount: document.getElementById('amount').value,
+        transactionType: document.getElementById('transactionType').value,
+        balance: document.getElementById('balance').value
+      };
+
+      await fetch(SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify(data)
+      });
+
+      alert('Data saved successfully!');
+      loadData();
+    });
+
+    // Load data from Google Sheet
+    async function loadData() {
+      const response = await fetch(SCRIPT_URL);
+      const data = await response.json();
+
+      const tableBody = document.querySelector('#ledgerTable tbody');
+      tableBody.innerHTML = '';
+
+      data.forEach(row => {
+        const tr = document.createElement('tr');
+        row.forEach(cell => {
+          const td = document.createElement('td');
+          td.textContent = cell;
+          tr.appendChild(td);
+        });
+        tableBody.appendChild(tr);
+      });
+    }
+
+    // Search ledger by name
+    async function searchLedger() {
+      const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+      const response = await fetch(SCRIPT_URL);
+      const data = await response.json();
+
+      const filteredData = data.filter(row => row[1].toLowerCase().includes(searchTerm));
+
+      const tableBody = document.querySelector('#ledgerTable tbody');
+      tableBody.innerHTML = '';
+
+      filteredData.forEach(row => {
+        const tr = document.createElement('tr');
+        row.forEach(cell => {
+          const td = document.createElement('td');
+          td.textContent = cell;
+          tr.appendChild(td);
+        });
+        tableBody.appendChild(tr);
+      });
+    }
+
+    // Print ledger as PDF
+    function printLedgerPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      const table = document.getElementById('ledgerTable');
+      const rows = table.querySelectorAll('tr');
+
+      let data = [];
+      rows.forEach(row => {
+        const rowData = [];
+        row.querySelectorAll('td').forEach(cell => {
+          rowData.push(cell.textContent);
+        });
+        data.push(rowData);
+      });
+
+      doc.autoTable({
+        head: [['Date', 'Name', 'Type', 'Invoice Number', 'Description', 'Amount', 'Transaction Type', 'Balance']],
+        body: data
+      });
+
+      doc.save('ledger.pdf');
+    }
+
+    // Load data on page load
+    loadData();
+  </script>
+</body>
+</html>
